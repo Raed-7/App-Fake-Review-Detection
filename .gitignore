@@ -1,0 +1,11 @@
+# model artifacts (keep out of GitHub)
+models/**
+*.safetensors
+*.bin
+*.pt
+*.pkl
+*.joblib
+
+# python junk
+__pycache__/
+*.pyc

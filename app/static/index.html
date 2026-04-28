@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fake Review Detector</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --card: #1a2235;
+    --border: #1e2d45;
+    --teal: #0d9488;
+    --teal-light: #14b8a6;
+    --teal-glow: rgba(13,148,136,0.15);
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.15);
+    --green: #10b981;
+    --green-glow: rgba(16,185,129,0.15);
+    --gold: #f59e0b;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --subtle: #334155;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background grid ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(13,148,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(13,148,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,15,30,0.8);
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--teal);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { font-size: 1.1rem; font-weight: 600; color: var(--text); }
+  .logo-sub  { font-size: 0.7rem; color: var(--muted); margin-top: 1px; }
+  .header-badges { display: flex; gap: 0.5rem; }
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid;
+    letter-spacing: 0.5px;
+  }
+  .badge-en { color: #60a5fa; border-color: #1e3a5f; background: rgba(59,130,246,0.1); }
+  .badge-ar { color: #a78bfa; border-color: #2e1a5f; background: rgba(139,92,246,0.1); }
+
+  /* ── Main layout ── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  /* ── Hero ── */
+  .hero { text-align: center; margin-bottom: 3rem; }
+  .hero h1 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #f1f5f9 0%, var(--teal-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 520px;
+    margin: 0 auto 1.5rem;
+    line-height: 1.6;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--teal-light);
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Main card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Language indicator ── */
+  .lang-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .lang-label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .lang-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+  }
+  .lang-pill.en { background: rgba(59,130,246,0.1); border-color: #1e3a5f; color: #60a5fa; }
+  .lang-pill.ar { background: rgba(139,92,246,0.1); border-color: #2e1a5f; color: #a78bfa; }
+  .lang-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  .lang-pill.en .lang-dot { background: #60a5fa; }
+  .lang-pill.ar .lang-dot { background: #a78bfa; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Textarea ── */
+  .textarea-wrap { position: relative; }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    line-height: 1.6;
+  }
+  textarea:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-glow);
+  }
+  textarea[dir="rtl"] { text-align: right; }
+  .char-count {
+    position: absolute;
+    bottom: 0.6rem;
+    right: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .char-count.warn { color: var(--gold); }
+
+  /* ── Examples ── */
+  .examples-label { font-size: 0.75rem; color: var(--muted); margin: 1rem 0 0.5rem; }
+  .examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .example-btn {
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .example-btn:hover {
+    border-color: var(--teal);
+    color: var(--teal-light);
+    background: var(--teal-glow);
+  }
+  .example-btn.ar { font-family: 'Segoe UI', Tahoma, sans-serif; direction: rtl; }
+
+  /* ── Button ── */
+  .btn-row { display: flex; gap: 0.75rem; align-items: center; }
+  .btn-analyse {
+    flex: 1;
+    padding: 0.9rem 1.5rem;
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .btn-analyse:hover:not(:disabled) {
+    background: var(--teal-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px var(--teal-glow);
+  }
+  .btn-analyse:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .btn-clear {
+    padding: 0.9rem 1rem;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-clear:hover { border-color: var(--subtle); color: var(--text); }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Result card ── */
+  .result-card {
+    border-radius: 16px;
+    padding: 1.75rem;
+    border: 1px solid;
+    margin-bottom: 1.5rem;
+    animation: slideIn 0.4s ease;
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .result-card.fake {
+    background: var(--red-glow);
+    border-color: rgba(239,68,68,0.3);
+  }
+  .result-card.real {
+    background: var(--green-glow);
+    border-color: rgba(16,185,129,0.3);
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .result-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .result-label-wrap { display: flex; align-items: center; gap: 0.75rem; }
+  .result-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .fake .result-icon { background: rgba(239,68,68,0.2); }
+  .real .result-icon { background: rgba(16,185,129,0.2); }
+  .result-verdict {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .fake .result-verdict { color: var(--red); }
+  .real .result-verdict { color: var(--green); }
+  .result-sub { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+  .result-confidence {
+    text-align: right;
+  }
+  .conf-num {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .fake .conf-num { color: var(--red); }
+  .real .conf-num { color: var(--green); }
+  .conf-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Confidence bar ── */
+  .conf-bar-wrap {
+    background: rgba(255,255,255,0.05);
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+  .conf-bar {
+    height: 100%;
+    border-radius: 99px;
+    width: 0;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .fake .conf-bar { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .real .conf-bar { background: linear-gradient(90deg, #10b981, #34d399); }
+
+  /* ── Meta info ── */
+  .result-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .meta-item { font-size: 0.78rem; }
+  .meta-key { color: var(--muted); margin-bottom: 2px; }
+  .meta-val { color: var(--text); font-weight: 500; }
+
+  /* ── History ── */
+  .history-section { margin-top: 0.5rem; }
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+  }
+  .history-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .h-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .h-dot.fake { background: var(--red); }
+  .h-dot.real { background: var(--green); }
+  .h-text { flex: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .h-label { font-weight: 600; flex-shrink: 0; }
+  .h-label.fake { color: var(--red); }
+  .h-label.real { color: var(--green); }
+  .h-conf { color: var(--muted); flex-shrink: 0; }
+
+  /* ── Info panel ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .info-card-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--teal);
+    margin-bottom: 0.5rem;
+  }
+  .info-card-body { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+  .info-card-body strong { color: var(--text); font-weight: 600; }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    border-top: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Error toast ── */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: #1e1e1e;
+    border: 1px solid var(--red);
+    color: var(--red);
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    z-index: 100;
+    display: none;
+    animation: slideIn 0.3s ease;
+  }
+  .toast.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🔍</div>
+    <div>
+      <div class="logo-text">Fake Review Detector</div>
+      <div class="logo-sub">University of Leeds · Dissertation 2026</div>
+    </div>
+  </div>
+  <div class="header-badges">
+    <span class="badge badge-en">English DistilBERT</span>
+    <span class="badge badge-ar">Arabic CamelBERT</span>
+  </div>
+</header>
+
+<!-- ── Main ── -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Detect Fake Reviews<br/>in English & Arabic</h1>
+    <p>Paste any product review below. The system automatically detects the language and classifies it as genuine or fake using fine-tuned transformer models.</p>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-val">98.1%</div>
+        <div class="stat-label">English F1</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">85.8%</div>
+        <div class="stat-label">Arabic F1</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">2</div>
+        <div class="stat-label">Languages</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="total-count">0</div>
+        <div class="stat-label">Analysed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="lang-bar">
+      <span class="lang-label">Review text</span>
+      <div class="lang-pill en" id="lang-pill">
+        <div class="lang-dot"></div>
+        <span id="lang-text">English detected</span>
+      </div>
+    </div>
+
+    <div class="textarea-wrap">
+      <textarea
+        id="review-input"
+        placeholder="Paste your review here - English or Arabic..."
+        maxlength="5000"
+      ></textarea>
+      <span class="char-count" id="char-count">0 / 5000</span>
+    </div>
+
+    <div class="examples-label">Try an example:</div>
+    <div class="examples">
+      <button class="example-btn" onclick="setExample(this)" data-text="Love this!  Well made, sturdy, and very comfortable.  I love it!Very pretty">Fake (EN)</button>
+      <button class="example-btn" onclick="setExample(this)" data-text="Battery life is decent but the charging cable feels cheap. Customer support took 3 days to respond.">Real (EN)</button>
+      <button class="example-btn ar" onclick="setExample(this)" data-text="هذا المنتج رائع جداً وأنصح به بشدة لجميع الناس! أفضل شراء في حياتي!!!">Fake (AR)</button>
+      <button class="example-btn ar" onclick="setExample(this)" data-text="الشاحن يعمل بشكل جيد لكن السلك قصير نوعاً ما وجودته متوسطة">Real (AR)</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-analyse" id="analyse-btn" onclick="analyse()">
+        <span id="btn-content">Analyse Review</span>
+      </button>
+      <button class="btn-clear" onclick="clearAll()">Clear</button>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="result-card">
+    <div class="result-top">
+      <div class="result-label-wrap">
+        <div class="result-icon" id="result-icon"></div>
+        <div>
+          <div class="result-verdict" id="result-verdict"></div>
+          <div class="result-sub" id="result-sub"></div>
+        </div>
+      </div>
+      <div class="result-confidence">
+        <div class="conf-num" id="conf-num"></div>
+        <div class="conf-label">Confidence</div>
+      </div>
+    </div>
+    <div class="conf-bar-wrap">
+      <div class="conf-bar" id="conf-bar"></div>
+    </div>
+    <div class="result-meta">
+      <div class="meta-item">
+        <div class="meta-key">Model used</div>
+        <div class="meta-val" id="meta-model"></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-key">Language</div>
+        <div class="meta-val" id="meta-lang"></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-key">Processing time</div>
+        <div class="meta-val" id="meta-time"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section" id="history-section" style="display:none">
+    <div class="card">
+      <div class="section-title">Recent predictions</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- Info cards -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-card-title">English Model</div>
+      <div class="info-card-body">
+        <strong>distilbert-base-uncased</strong> fine-tuned on 40,432 Amazon reviews.
+        Achieves <strong>F1 = 0.9813</strong> on the held-out test set.
+        Input: raw text up to 256 tokens.
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">Arabic Model</div>
+      <div class="info-card-body">
+        <strong>CAMeL-Lab/camelbert-mix</strong> fine-tuned on 1,728 multi-domain Arabic reviews.
+        Achieves <strong>F1 = 0.8582</strong>. Handles MSA and dialectal Arabic.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  Fake Review Detection · University of Leeds · Raed Alshammari · 2026 ·
+  English: DistilBERT (F1 0.9813) &nbsp;|&nbsp; Arabic: CamelBERT (F1 0.8582)
+</footer>
+
+<!-- Error toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const textarea   = document.getElementById('review-input');
+  const charCount  = document.getElementById('char-count');
+  const langPill   = document.getElementById('lang-pill');
+  const langText   = document.getElementById('lang-text');
+  const resultCard = document.getElementById('result-card');
+  const analyseBtn = document.getElementById('analyse-btn');
+  const btnContent = document.getElementById('btn-content');
+  const totalCount = document.getElementById('total-count');
+
+  let history = [];
+  let sessionCount = 0;
+
+  const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g;
+
+  function detectLang(text) {
+    if (!text.trim()) return 'english';
+    const matches = text.match(ARABIC_RE) || [];
+    return (matches.length / Math.max(text.trim().length, 1)) > 0.15 ? 'arabic' : 'english';
+  }
+
+  function updateLangPill(lang) {
+    langPill.className = 'lang-pill ' + lang;
+    langText.textContent = lang === 'arabic' ? 'Arabic detected' : 'English detected';
+    textarea.setAttribute('dir', lang === 'arabic' ? 'rtl' : 'ltr');
+  }
+
+  textarea.addEventListener('input', () => {
+    const len = textarea.value.length;
+    charCount.textContent = `${len} / 5000`;
+    charCount.className = 'char-count' + (len > 4500 ? ' warn' : '');
+    updateLangPill(detectLang(textarea.value));
+  });
+
+  function setExample(btn) {
+    textarea.value = btn.dataset.text;
+    textarea.dispatchEvent(new Event('input'));
+    textarea.focus();
+  }
+
+  function clearAll() {
+    textarea.value = '';
+    charCount.textContent = '0 / 5000';
+    charCount.className = 'char-count';
+    resultCard.className = 'result-card';
+    updateLangPill('english');
+  }
+
+  function setLoading(on) {
+    analyseBtn.disabled = on;
+    btnContent.innerHTML = on
+      ? '<div class="spinner"></div> Analysing...'
+      : 'Analyse Review';
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show';
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  async function analyse() {
+    const text = textarea.value.trim();
+    if (!text) { showToast('Please enter a review first.'); return; }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Server error');
+      }
+
+      const data = await res.json();
+      showResult(data, text);
+      addHistory(data, text);
+      sessionCount++;
+      totalCount.textContent = sessionCount;
+
+    } catch (e) {
+      showToast('Error: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function showResult(data, text) {
+    const isFake = data.label === 'Fake';
+    const cls    = isFake ? 'fake' : 'real';
+
+    resultCard.className = `result-card ${cls} show`;
+
+    document.getElementById('result-icon').textContent    = isFake ? '⚠️' : '✅';
+    document.getElementById('result-verdict').textContent = data.label;
+    document.getElementById('result-sub').textContent     = isFake
+      ? 'This review appears to be computer-generated or deceptive.'
+      : 'This review appears to be genuine.';
+
+    document.getElementById('conf-num').textContent  = data.confidence + '%';
+    document.getElementById('meta-model').textContent = data.model_used;
+    document.getElementById('meta-lang').textContent  = data.language === 'arabic' ? 'Arabic' : 'English';
+    document.getElementById('meta-time').textContent  = data.processing_time_ms + ' ms';
+
+    // Animate bar
+    const bar = document.getElementById('conf-bar');
+    bar.style.width = '0';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bar.style.width = data.confidence + '%';
+      });
+    });
+  }
+
+  function addHistory(data, text) {
+    history.unshift({ data, text });
+    if (history.length > 5) history.pop();
+
+    const section = document.getElementById('history-section');
+    const list    = document.getElementById('history-list');
+    section.style.display = 'block';
+    list.innerHTML = '';
+
+    history.forEach(item => {
+      const isFake = item.data.label === 'Fake';
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `
+        <div class="h-dot ${isFake ? 'fake' : 'real'}"></div>
+        <div class="h-text">${item.text.substring(0, 60)}${item.text.length > 60 ? '...' : ''}</div>
+        <div class="h-label ${isFake ? 'fake' : 'real'}">${item.data.label}</div>
+        <div class="h-conf">${item.data.confidence}%</div>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  // Enter key support
+  textarea.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'Enter') analyse();
+  });
+</script>
+</body>
+</html>
