@@ -1,21 +1,16 @@
-import re
+import re,  os
 import time
-import joblib
 import torch
 import torch.nn.functional as F
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 # ── Paths ──
-ROOT         = Path(__file__).resolve().parent.parent
-MODELS       = ROOT / "models"
 
-EN_BERT_DIR = MODELS / "english" / "distilbert"
-AR_CAMEL_DIR = MODELS / "arabic" / "camelbert"
-AR_TFIDF     = MODELS / "arabic" / "tfidf_vectorizer.pkl"
-AR_LR        = MODELS / "arabic" / "lr_model.pkl"
-EN_TFIDF     = MODELS / "english" / "tfidf_vectorizer.pkl"
-EN_LR        = MODELS / "english" / "lr_model.pkl"
+EN_REPO = "raed-7/fake-review-distilbert-en"
+AR_REPO = "raed-7/fake-review-camelbert-ar"
+
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 # ── Language detection ──
 ARABIC_RE = re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]')
@@ -33,22 +28,20 @@ _models = {}
 def load_all_models():
     """Load all models once at startup."""
     print("Loading English DistilBERT...")
-    _models["en_tokenizer"] = AutoTokenizer.from_pretrained(str(EN_BERT_DIR))
-    _models["en_model"]     = AutoModelForSequenceClassification.from_pretrained(str(EN_BERT_DIR))
+    _models["en_tokenizer"] = AutoTokenizer.from_pretrained(EN_REPO, token=HF_TOKEN)
+    _models["en_model"]     = AutoModelForSequenceClassification.from_pretrained(EN_REPO, token=HF_TOKEN)
     _models["en_model"].eval()
+    _models["en_model"].to("cpu")
     print("English DistilBERT loaded.")
 
     print("Loading Arabic CamelBERT...")
-    _models["ar_tokenizer"] = AutoTokenizer.from_pretrained(str(AR_CAMEL_DIR))
-    _models["ar_model"]     = AutoModelForSequenceClassification.from_pretrained(str(AR_CAMEL_DIR))
+    _models["ar_tokenizer"] = AutoTokenizer.from_pretrained(AR_REPO, token=HF_TOKEN)
+    _models["ar_model"]     = AutoModelForSequenceClassification.from_pretrained(AR_REPO, token=HF_TOKEN)
     _models["ar_model"].eval()
+    _models["ar_model"].to("cpu")
     print("Arabic CamelBERT loaded.")
 
-    print("Loading classical models...")
-    _models["ar_tfidf"] = joblib.load(AR_TFIDF)
-    _models["ar_lr"]    = joblib.load(AR_LR)
-    _models["en_tfidf"] = joblib.load(EN_TFIDF)
-    _models["en_lr"]    = joblib.load(EN_LR)
+    print("Skipping classical models (not deployed).")
     print("All models loaded successfully.")
 
 def models_loaded() -> bool:
