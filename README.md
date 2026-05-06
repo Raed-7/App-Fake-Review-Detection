@@ -1,55 +1,175 @@
-# 
+<div align="center">
 
-# Bilingual Fake Review Detector (English + Arabic)
+# 🕵️ Bilingual Fake Review Detector
 
-A FastAPI web application that classifies product reviews as **Fake** or **Real** for both **English** and **Arabic**.
+### English & Arabic · Real-time Detection · Powered by Transformers
 
-It automatically detects the input language using a Unicode-script heuristic and routes the text to the correct model.
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Online-success?style=for-the-badge)](https://fake-review-detector-eajs.onrender.com/)
+[![Python](https://img.shields.io/badge/Python-3.10-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Hugging Face](https://img.shields.io/badge/🤗_Hugging_Face-Models-yellow?style=for-the-badge)](https://huggingface.co/raed-7)
+[![Render](https://img.shields.io/badge/Deployed_on-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/)
 
-## Features
+**A FastAPI web application that classifies product reviews as `Fake` or `Real` in both English and Arabic, using fine-tuned transformer models.**
 
-- English + Arabic support (automatic routing)
-- Real/Fake label + confidence score
-- FastAPI backend + simple static HTML frontend
-- Models loaded once at startup for low-latency inference
-- Health endpoint for deployment checks
+[🌐 **Try the Live App**](https://fake-review-detector-eajs.onrender.com/) · [📖 Documentation](#-api) · [🚀 Quick Start](#-run-locally)
 
-## Project structure
+</div>
 
-app/
-- main.py
-- predictor.py
-- schemas.py
-- static/
+---
 
-- models/
-- english/
-- arabic/
-- requirements.txt
+## ✨ Features
 
-## Run locally
+- 🌍 **Bilingual support** — automatic English / Arabic routing via Unicode-script heuristic
+- 🎯 **High accuracy** — DistilBERT for English, CamelBERT-Mix for Arabic
+- ⚡ **Real-time inference** — models loaded once at startup for low latency
+- 📊 **Confidence scoring** — every prediction includes a transparent confidence value
+- 🎨 **Clean UI** — minimal static HTML frontend, no build step required
+- 🔍 **Health endpoint** — `/health` for deployment monitoring
+- ☁️ **Cloud-ready** — deployed on Render with models hosted on Hugging Face Hub
 
-Install dependencies:
+---
+
+## 🧠 Models
+
+| Language | Model | Hugging Face |
+|----------|-------|--------------|
+| 🇬🇧 English | DistilBERT (fine-tuned) | [`raed-7/fake-review-distilbert-en`](https://huggingface.co/raed-7/fake-review-distilbert-en) |
+| 🇸🇦 Arabic | CamelBERT-Mix (fine-tuned) | [`raed-7/fake-review-camelbert-ar`](https://huggingface.co/raed-7/fake-review-camelbert-ar) |
+
+Models are loaded remotely at application startup and cached for reuse.
+
+---
+
+## 📁 Project Structure
+
+```
+App-Fake-Review-Detection/
+├── app/
+│   ├── main.py              # FastAPI entrypoint
+│   ├── predictor.py         # Inference logic & language routing
+│   ├── schemas.py           # Pydantic request/response models
+│   └── static/
+│       └── index.html       # Frontend UI
+├── requirements.txt          # Python dependencies
+├── render.yaml               # Render deployment config
+├── runtime.txt               # Python version pin
+└── README.md
+```
+
+---
+
+## 🚀 Run Locally
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Raed-7/App-Fake-Review-Detection.git
+cd App-Fake-Review-Detection
+```
+
+### 2. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
-- Start the server from the repository root:
-```bash
-uicorn app.main:app --reload 
-```
-Open: http://127.0.0.1:8000 
 
-API:
-POST /predict  
-Request body:
+### 3. Start the server
+
 ```bash
-{"text": "your review text here"}
+uvicorn app.main:app --reload
 ```
-Response includes:
-- predicted label 
-- confidence score 
-- detected language 
-- model name 
-- processing time (ms)
-GET /health  
-- Returns model-load status.
+
+### 4. Open the app
+
+Navigate to **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser.
+
+---
+
+## 🔌 API
+
+### `POST /predict`
+
+Submit a review and receive a classification.
+
+**Request body:**
+
+```json
+{
+  "text": "Best product ever!!! Amazing quality, fast shipping, 5 stars!!!"
+}
+```
+
+**Response:**
+
+```json
+{
+  "label": "Fake",
+  "confidence": 99.9,
+  "language": "English",
+  "model": "DistilBERT",
+  "processing_time_ms": 1247
+}
+```
+
+### `GET /health`
+
+Returns model-load status for deployment health checks.
+
+```json
+{
+  "status": "ok",
+  "models_loaded": true
+}
+```
+
+---
+
+## 🌐 Live Demo
+
+Try the deployed application here:
+
+### 👉 **[https://fake-review-detector-eajs.onrender.com/](https://fake-review-detector-eajs.onrender.com/)**
+
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | FastAPI, Uvicorn |
+| ML / NLP | Transformers, PyTorch, scikit-learn |
+| Frontend | Static HTML / CSS / JS |
+| Deployment | Render |
+| Model Hosting | Hugging Face Hub |
+
+---
+
+## 📚 Research Context
+
+This application is the deployment artefact of a final-year BSc dissertation at the **University of Leeds**:
+
+> *Detecting Fake E-Commerce Reviews in English and Arabic Using Classical and Transformer Models* (2025/26)
+
+The accompanying research compares classical TF-IDF baselines (Logistic Regression, Linear SVM, Random Forest) against fine-tuned transformer models (BERT, DistilBERT, CamelBERT, AraBERT) on bilingual fake review detection.
+
+**Key results:**
+- DistilBERT (English): macro-F1 = **0.9813**
+- CamelBERT (Arabic): macro-F1 = **0.8582**
+
+---
+
+## 👤 Author
+
+**Raed Alshammari**
+BSc Computer Science with Artificial Intelligence
+University of Leeds, 2025/26
+
+---
+
+<div align="center">
+
+⭐ **If you found this useful, please consider starring the repository!**
+
+</div>
